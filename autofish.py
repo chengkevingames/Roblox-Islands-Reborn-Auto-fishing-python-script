@@ -6,7 +6,7 @@ import threading
 import tkinter as tk
 from PIL import Image, ImageTk
 import ctypes
-import keyboard  # 引入 keyboard 模組嚟偵測 F8
+import keyboard  # 引入 keyboard 模組嚟偵測 F8 同做防掛機動作
 
 # ==================== ⚙️ Resolution Settings ====================
 RESOLUTION_W = 2560
@@ -25,14 +25,17 @@ is_fishing = False
 
 def vision_thread(status_lbl, cam_lbl, root):
     global is_fishing
+    fish_completed = 0  
+    FISH_COUNT_FOR_AFK = 5  # 🛡️ 每釣 5 條魚就觸發一次防掛機跳躍
     
     with mss.MSS() as sct:
         screen_w = RESOLUTION_W
         screen_h = RESOLUTION_H
         cx, cy = screen_w // 2, screen_h // 2
         
+        # 💡 修正重點：將檢測區向下移（top 改為 cy - 50），避開中間嘅角色同魚竿手柄
         search_box = {
-            "top": cy - 300,
+            "top": cy - 50,
             "left": cx - 300,
             "width": 600,
             "height": 600
@@ -102,6 +105,18 @@ def vision_thread(status_lbl, cam_lbl, root):
                         
                         caught = True
                         time.sleep(1.5) 
+                        
+                        fish_completed += 1
+                        
+                        # 🛡️ 每 5 條魚收完杆後自動執行防掛機跳躍 (Jump)
+                        if fish_completed >= FISH_COUNT_FOR_AFK:
+                            status_lbl.config(text="🛡️ Per 5 fish: Executing Anti-AFK Jump...")
+                            keyboard.press('space')
+                            time.sleep(0.2)
+                            keyboard.release('space')
+                            fish_completed = 0  
+                            time.sleep(1.0)
+                            
                         break
 
                 img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGRA2RGB)
